@@ -57,7 +57,7 @@ begin
   {$IFDEF WINDOWS}
   ConfigFile := ExtractFilePath(ParamStr(0)) + 'mailgenerator.ini';
   {$ELSE}
-  ConfigFile := '/etc/eventlog/mailgenerator.ini';
+  ConfigFile := '/etc/eventcollector/mailgenerator.ini';
   {$ENDIF}
 
   if not FileExists(ConfigFile) then
