@@ -1,0 +1,69 @@
+object EvaluatorDM: TEvaluatorDM
+  OnCreate = DataModuleCreate
+  OnDestroy = DataModuleDestroy
+  OldCreateOrder = False
+  Height = 453
+  HorizontalOffset = 740
+  VerticalOffset = 211
+  Width = 533
+  PPI = 120
+  object MainConn: TZConnection
+    ControlsCodePage = cCP_UTF8
+    ClientCodepage = 'UTF8'
+    Properties.Strings = (
+      'codepage=UTF8'
+      'RawStringEncoding=DB_CP'
+    )
+    TransactIsolationLevel = tiReadCommitted
+    DisableSavepoints = False
+    Port = 0
+    Database = '/srv/firebird/evt_spg.fdb'
+    User = 'sysdba'
+    Protocol = 'firebird'
+    Left = 40
+    Top = 30
+  end
+  object ComputersQ: TZReadOnlyQuery
+    Connection = MainConn
+    SQL.Strings = (
+      'SELECT C.ID, C."NAME",'
+      '  (select max(lasttimestamp) from lasttimestamps L where L.computer = C.ID) as LASTTIMESTAMP'
+      'FROM COMPUTERS C'
+    )
+    Params = <>
+    Left = 40
+    Top = 120
+  end
+  object LogMessagesQ: TZReadOnlyQuery
+    Connection = MainConn
+    SQL.Strings = (
+      'select * from ('
+      '  select L.NAME as LOGNAME, E.provider, E.eventid, E.levelname, count(*) as "COUNT", min(E.timecreated) as mintime, max(E.timecreated) as maxtime, E.message'
+      '  from events E'
+      '    join lognames L on (E.LOG = L.ID)'
+      '  where'
+      '    computer = :COMPUTER and '
+      '    timecreated >= :MINTIME'
+      '    and log = 2'
+      '    and level in (1, 2, 3)'
+      '  group by L.NAME, E.provider, E.eventid, E.levelname, E.MESSAGE'
+      ')  order by mintime desc'
+    )
+    Params = <    
+      item
+        Name = 'COMPUTER'
+      end    
+      item
+        Name = 'MINTIME'
+      end>
+    Left = 144
+    Top = 120
+    ParamData = <    
+      item
+        Name = 'COMPUTER'
+      end    
+      item
+        Name = 'MINTIME'
+      end>
+  end
+end
