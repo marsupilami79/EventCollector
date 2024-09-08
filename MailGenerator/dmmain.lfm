@@ -2,11 +2,10 @@ object EvaluatorDM: TEvaluatorDM
   OnCreate = DataModuleCreate
   OnDestroy = DataModuleDestroy
   OldCreateOrder = False
-  Height = 453
-  HorizontalOffset = 740
-  VerticalOffset = 211
-  Width = 533
-  PPI = 120
+  Height = 362
+  HorizontalOffset = 592
+  VerticalOffset = 169
+  Width = 426
   object MainConn: TZConnection
     ControlsCodePage = cCP_UTF8
     ClientCodepage = 'UTF8'
@@ -20,8 +19,8 @@ object EvaluatorDM: TEvaluatorDM
     Database = '/srv/firebird/evt_spg.fdb'
     User = 'sysdba'
     Protocol = 'firebird'
-    Left = 40
-    Top = 30
+    Left = 32
+    Top = 24
   end
   object ComputersQ: TZReadOnlyQuery
     Connection = MainConn
@@ -31,8 +30,8 @@ object EvaluatorDM: TEvaluatorDM
       'FROM COMPUTERS C'
     )
     Params = <>
-    Left = 40
-    Top = 120
+    Left = 32
+    Top = 96
   end
   object LogMessagesQ: TZReadOnlyQuery
     Connection = MainConn
@@ -56,8 +55,8 @@ object EvaluatorDM: TEvaluatorDM
       item
         Name = 'MINTIME'
       end>
-    Left = 144
-    Top = 120
+    Left = 115
+    Top = 96
     ParamData = <    
       item
         Name = 'COMPUTER'

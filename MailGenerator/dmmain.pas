@@ -226,9 +226,9 @@ begin
       Line := Line + LogMessagesQ.FieldByName('Count').AsString;
       Line := Line + '</td><td>';
       if LogMessagesQ.FieldByName('MINTIME').AsDateTime = LogMessagesQ.FieldByName('MAXTIME').AsDateTime then
-        Line := Line + LogMessagesQ.FieldByName('MINTIME').AsString
+        Line := Line + FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', LogMessagesQ.FieldByName('MINTIME').AsDateTime)
       else
-        Line := Line + LogMessagesQ.FieldByName('MINTIME').AsString + '- <br/>' + LogMessagesQ.FieldByName('MAXTIME').AsString;
+        Line := Line + FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', LogMessagesQ.FieldByName('MINTIME').AsDateTime) + '- <br/>' + FormatDateTime('yyyy-mm-dd hh:nn:ss.zzz', LogMessagesQ.FieldByName('MAXTIME').AsDateTime);
       Line := Line + '</td><td>';
       Line := Line + LogMessagesQ.FieldByName('Message').AsString;
       Line := Line + '</td></tr>';
