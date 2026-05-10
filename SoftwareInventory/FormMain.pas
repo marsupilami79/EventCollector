@@ -1,21 +1,25 @@
 unit FormMain;
 
+{$MODE Delphi}
+
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.WinXCtrls,
-  Vcl.ExtCtrls;
+  LCLIntf, LCLType, LMessages, Messages, SysUtils, Variants, Classes, Graphics,
+  Controls, Forms, Dialogs, StdCtrls,
+  ExtCtrls, ComCtrls;
 
 type
   TAuditThread = class(TThread)
     procedure Execute; override;
   end;
 
+  { TForm1 }
+
   TForm1 = class(TForm)
-    ActivityIndicator: TActivityIndicator;
     Label1: TLabel;
     AuditTimer: TTimer;
+    ProgressBar1: TProgressBar;
     procedure FormCreate(Sender: TObject);
     procedure AuditTimerTimer(Sender: TObject);
     procedure Label1DblClick(Sender: TObject);
@@ -31,7 +35,7 @@ var
 
 implementation
 
-{$R *.dfm}
+{$R *.lfm}
 
 uses DmAudit;
 
@@ -44,7 +48,8 @@ procedure TForm1.AuditTimerTimer(Sender: TObject);
 begin
   if not Assigned(AuditThread) then begin
     AuditThread := TAuditThread.Create(False);
-    ActivityIndicator.Animate := True;
+    //ActivityIndicator.Animate := True;
+    ProgressBar1.Style := pbstMarquee;
   end else begin
     if AuditThread.Finished then begin
       AuditTimer.Enabled := False;

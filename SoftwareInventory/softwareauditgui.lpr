@@ -1,7 +1,9 @@
 program softwareauditgui;
 
+{$MODE Delphi}
+
 uses
-  Vcl.Forms,
+  Forms, Interfaces, opensslsockets,
   FormMain in 'FormMain.pas' {Form1},
   DmAudit in 'DmAudit.pas' {AuditDM: TDataModule};
 
@@ -9,7 +11,6 @@ uses
 
 begin
   Application.Initialize;
-  Application.MainFormOnTaskbar := True;
   Application.CreateForm(TForm1, Form1);
   Application.CreateForm(TAuditDM, AuditDM);
   Application.Run;

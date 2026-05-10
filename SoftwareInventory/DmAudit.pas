@@ -1,21 +1,27 @@
 unit DmAudit;
 
+{$MODE Delphi}
+
 interface
 
 uses
-  System.SysUtils, System.Classes, Data.DB, ZAbstractRODataset,
+  SysUtils, Classes, DB, ZAbstractRODataset,
   ZAbstractDataset, ZDataset, ZAbstractConnection, ZConnection;
 
 type
+
+  { TAuditDM }
+
   TAuditDM = class(TDataModule)
     MainConn: TZConnection;
     TempQ: TZQuery;
+    TempROQ: TZReadOnlyQuery;
   private
     { Private-Deklarationen }
     ComputerID: Int64;
     procedure LoadConfig;
     procedure readRegProducts;
-    procedure getComputerId;
+    procedure updateMachineData;
   public
     { Public-Deklarationen }
   end;
@@ -29,19 +35,100 @@ implementation
 
 {%CLASSGROUP 'Vcl.Controls.TControl'}
 
-{$R *.dfm}
+{$R *.lfm}
 
-uses Registry, Types, Windows, IksTools, IniFiles,   Xml.omnixmldom, Xml.xmldom;
+uses Registry, Types, LCLIntf, LCLType, LMessages, IksTools, IniFiles, IksUefi,
+  ActiveX, ComObj;
+
+type
+  TMachineInfo = record
+    Manufacturer: String;
+    Model: String;
+  end;
+
 
 procedure doSoftwareAudit;
 begin
+  CoInitialize(nil);
   AuditDM := TAuditDM.Create(nil);
   try
     AuditDM.LoadConfig;
-    AuditDM.getComputerId;
+    AuditDM.updateMachineData;
     AuditDM.readRegProducts;
   finally
     FreeAndNil(AuditDM);
+  end;
+end;
+
+function WMI_Get_Betriebssystem(const Mit_Version: Boolean = False): String;
+const
+  wbemFlagForwardOnly = $00000020;
+var
+  FSWbemLocator: OLEVariant;
+  FWMIService: OLEVariant;
+  FWbemObjectSet: OLEVariant;
+  FWbemObject: OLEVariant;
+  iEnum: IEnumvariant;
+  iValue: Cardinal;
+begin
+  Result := '?';
+  try
+    FSWbemLocator := CreateOleObject('WbemScripting.SWbemLocator');
+    FWMIService := FSWbemLocator.ConnectServer('localhost', 'root\CIMV2', '', '');
+    FWbemObjectSet := FWMIService.ExecQuery('SELECT Name, Version FROM Win32_OperatingSystem',
+                                            'WQL', wbemFlagForwardOnly);
+    iEnum := IUnknown(FWbemObjectSet._NewEnum) as IEnumvariant;
+
+    if iEnum.Next(1, @FWbemObject, @iValue) = 0 then
+    begin
+      Result := String(FWbemObject.Name);
+      if Pos('|', Result) > 0 then
+        Result := Copy(Result, 1, Pos('|', Result) - 1);
+
+      if Pos('Microsoft ', Result) > 0 then
+        Try
+          Result := Trim(Copy(Result, Pos('Microsoft ', Result) + 10, 40));
+        except
+        end;
+
+      if Mit_Version then
+        Result := Result + ' [ ' + String(FWbemObject.Version) + ' ]';
+
+      FWbemObject := Unassigned;
+    end;
+  except
+    try
+      Result := WMI_Get_Betriebssystem;
+    except
+      Result := '?';
+    end;
+  end;
+end;
+
+function WMI_Get_MachineInfo(): TMachineInfo;
+const
+  wbemFlagForwardOnly = $00000020;
+var
+  FSWbemLocator: OLEVariant;
+  FWMIService: OLEVariant;
+  FWbemObjectSet: OLEVariant;
+  FWbemObject: OLEVariant;
+  iEnum: IEnumvariant;
+  iValue: Cardinal;
+begin
+  Result.Manufacturer := '?';
+  Result.Model := '?';
+
+  FSWbemLocator := CreateOleObject('WbemScripting.SWbemLocator');
+  FWMIService := FSWbemLocator.ConnectServer('localhost', 'root\CIMV2', '', '');
+  FWbemObjectSet := FWMIService.ExecQuery('SELECT Manufacturer, Model FROM Win32_ComputerSystem',
+                                          'WQL', wbemFlagForwardOnly);
+  iEnum := IUnknown(FWbemObjectSet._NewEnum) as IEnumvariant;
+
+  if iEnum.Next(1, @FWbemObject, @iValue) = 0 then begin
+    Result.Manufacturer := String(FWbemObject.Manufacturer);
+    Result.Model := String(FWbemObject.Model);
+    FWbemObject := Unassigned;
   end;
 end;
 
@@ -99,26 +186,61 @@ begin
   end;
 end;
 
-procedure TAuditDM.getComputerId;
+procedure TAuditDM.updateMachineData;
 var
   CompName: String;
+  Field: TField;
+  MachineInfo: TMachineInfo;
 begin
   CompName := GetComputerName;
-  TempQ.SQL.Text := 'select ID from computers where lower(name) = lower(:computername)';
+  TempQ.SQL.Text := 'select * from computers where lower(name) = lower(:computername)';
   TempQ.ParamByName('computername').AsString := CompName;
   TempQ.Open;
-  if TempQ.RecordCount > 0 then
-    ComputerId := TempQ.FieldByName('ID').AsLargeInt
-  else begin
-    TempQ.Close;
-    TempQ.SQL.Text := 'select gen_id(GENERIC, 1) as id from rdb$database';
-    TempQ.Open;
-    ComputerId := TempQ.FieldByName('ID').AsLargeInt;
-    TempQ.Close;
-    TempQ.SQL.Text := 'insert into computers (id, name) values (:id, :name)';
-    TempQ.ParamByName('ID').AsLargeInt := ComputerId;
-    TempQ.ParamByName('NAME').AsString := CompName;
-    TempQ.ExecSQL;
+  try
+    if TempQ.RecordCount = 0 then begin
+      CompName := GetComputerName;
+      TempROQ.SQL.Text := 'select gen_id(GENERIC, 1) as id from rdb$database';
+      TempROQ.Open;
+      try
+        ComputerID := TempROQ.FieldByName('ID').AsInteger;
+      finally
+        TempROQ.Close;
+      end;
+
+      TempQ.Append;
+      TempQ.FieldByName('ID').AsInteger := ComputerID;
+      TempQ.FieldByName('NAME').AsString := CompName;
+    end else begin
+      TempQ.Edit;
+    end;
+
+    TempQ.FieldByName('LASTTIMESTAMP').AsDateTime := Now;
+
+    Field := TempQ.FindField('WINVER');
+    if Assigned(Field) then
+      Field.AsString := WMI_Get_Betriebssystem(true);
+
+    Field := TempQ.FindField('HasWindowsUefiCa2023');
+    if Assigned(Field) then
+      Field.AsBoolean := HasWindowsUefiCa2023;
+
+    MachineInfo := WMI_Get_MachineInfo;
+
+    Field := TempQ.FindField('MANUFACTURER');
+    if Assigned(Field) then
+      Field.AsString := MachineInfo.Manufacturer;
+
+    Field := TempQ.FindField('MODEL');
+    if Assigned(Field) then
+      Field.AsString := MachineInfo.Model;
+  finally
+    try
+      if TempQ.State in [dsEdit, dsInsert] then
+        TempQ.Post;
+    except
+      TempQ.Cancel;
+      raise;
+    end;
   end;
 end;
 
@@ -142,8 +264,5 @@ begin
     FreeAndNil(Ini);
   end;
 end;
-
-initialization
-  DefaultDOMVendor := sOmniXmlVendor;
 
 end.

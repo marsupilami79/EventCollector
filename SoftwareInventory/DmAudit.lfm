@@ -1,0 +1,27 @@
+object AuditDM: TAuditDM
+  OldCreateOrder = False
+  Height = 600
+  HorizontalOffset = 666
+  VerticalOffset = 254
+  Width = 800
+  PPI = 120
+  object MainConn: TZConnection
+    ControlsCodePage = cCP_UTF8
+    DisableSavepoints = False
+    Port = 0
+    Left = 38
+    Top = 36
+  end
+  object TempQ: TZQuery
+    Connection = MainConn
+    Params = <>
+    Left = 112
+    Top = 36
+  end
+  object TempROQ: TZReadOnlyQuery
+    Connection = MainConn
+    Params = <>
+    Left = 184
+    Top = 36
+  end
+end
